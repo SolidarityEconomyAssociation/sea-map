@@ -15,7 +15,7 @@
  */
 
 
-define([], function () {
+//define([], function () {
   "use strict";
 
   /** Define config value types, and certain helper functions.
@@ -401,5 +401,5 @@ ${def.details || ''}
 `))
     .join('');
 
-  return configSchema;
-});
+  module.exports = configSchema;
+//});

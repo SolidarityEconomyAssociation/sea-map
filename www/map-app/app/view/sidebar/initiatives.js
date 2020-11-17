@@ -1,11 +1,17 @@
 // The view aspects of the Main Menu sidebar
-define([
+/*define([
   "d3",
   "app/eventbus",
   "presenter/sidebar/initiatives",
   "view/sidebar/base",
   "model/config"
-], function (d3, eventbus, presenter, sidebarView, config) {
+   ], function (d3, eventbus, presenter, sidebarView, config) {*/
+const d3 = require('d3');
+const eventbus = require('../../eventbus')
+const presenter = require('../../presenter/sidebar/initiatives');
+const sidebarView = require('../../view/base');
+const config = require('../../model/config');
+
   "use strict";
 
   // Our local Sidebar object:
@@ -334,5 +340,5 @@ define([
   var pub = {
     createSidebar: createSidebar
   };
-  return pub;
-});
+  module.exports = pub;
+//});
