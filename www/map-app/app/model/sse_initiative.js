@@ -4,11 +4,10 @@ define(["d3", "app/eventbus", "model/config"], function (d3, eventbus, config) {
   */
 
   const d3 = require('d3');
-  const config = require('./config');
   const eventbus = require('../eventbus');
   
   "use strict";
-
+function init(config) {
   let loadedInitiatives = [];
   let initiativesToLoad = [];
   let initiativesByUid = {};
@@ -717,7 +716,7 @@ define(["d3", "app/eventbus", "model/config"], function (d3, eventbus, config) {
     return values;
   }
 
-  var pub = {
+  return {
     loadFromWebService: loadFromWebService,
     search: search,
     latLngBounds: latLngBounds,
@@ -732,7 +731,8 @@ define(["d3", "app/eventbus", "model/config"], function (d3, eventbus, config) {
     getInitiativeUIDMap: getInitiativeUIDMap,
     getVerboseValuesForFields: getVerboseValuesForFields
   };
+}
   // Automatically load the data when the app is ready:
   //eventbus.subscribe({topic: "Main.ready", callback: loadFromWebService});
-  module.exports = pub;
+  module.exports = init;
 //});

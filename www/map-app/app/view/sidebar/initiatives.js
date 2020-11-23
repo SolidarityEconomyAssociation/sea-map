@@ -8,11 +8,13 @@
    ], function (d3, eventbus, presenter, sidebarView, config) {*/
 const d3 = require('d3');
 const eventbus = require('../../eventbus')
-const presenter = require('../../presenter/sidebar/initiatives');
 const sidebarView = require('../../view/base');
-const config = require('../../model/config');
 
   "use strict";
+
+
+function init(config) {
+  const presenter = require('../../presenter/sidebar/initiatives')(config);
 
   // Our local Sidebar object:
   function Sidebar() { }
@@ -337,8 +339,11 @@ const config = require('../../model/config');
 
     return view;
   }
-  var pub = {
+  return {
     createSidebar: createSidebar
   };
-  module.exports = pub;
+}
+
+
+module.exports = init;
 //});
