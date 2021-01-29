@@ -7,7 +7,9 @@ define(["d3", "app/eventbus", "model/config"], function (d3, eventbus, config) {
   const eventbus = require('../eventbus');
   
   "use strict";
-function init(config) {
+function init(registry) {
+  const config = registry("config");
+  
   let loadedInitiatives = [];
   let initiativesToLoad = [];
   let initiativesByUid = {};
@@ -677,7 +679,7 @@ function init(config) {
         topic: "Initiative.loadFailed",
         data: { error: err, dataset: dataset }
       });
-      console.log(err)
+      console.error(service, err)
     });
   }
   // Currently unused.
