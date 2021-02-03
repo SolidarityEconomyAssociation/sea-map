@@ -5,8 +5,9 @@ define(["d3", "app/eventbus", "model/config"], function (d3, eventbus, config) {
 
   const d3 = require('d3');
   const eventbus = require('../eventbus');
-  
-  "use strict";
+  const getDatasetPhp = require("../../../services/get_dataset.php");
+
+"use strict";
 function init(registry) {
   const config = registry("config");
   
@@ -640,8 +641,8 @@ function init(registry) {
 
   function loadDataset(dataset) {
 
-    var service = config.getServicesPath() + "get_dataset.php?dataset=" + dataset;
-
+    let service = `${getDatasetPhp}?dataset=${encodeURIComponent(dataset)}`;
+    
     // Note, caching currently doesn't work correctly with multiple data sets
     // so until that's fixed, don't use it in that case.
     const numDatasets = config.namedDatasets().length;
@@ -687,13 +688,13 @@ function init(registry) {
     var ds = config.namedDatasets();
     for (let i in ds) {
       var service =
-        config.getServicesPath() +
-        "get_dataset.php?dataset=" +
-        ds[i] +
+        getDatasetPhp +
+        "?dataset=" +
+        encodeURIComponent(ds[i]) +
         "&q=" +
         query +
         "&uid=" +
-        uid;
+        encodeURIComponent(uid);
       var response = null;
       var message = null;
       d3.json(service).then(function (json) {
