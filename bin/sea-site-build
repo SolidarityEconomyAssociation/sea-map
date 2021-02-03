@@ -1,65 +1,176 @@
-#!/bin/bash
+#!/usr/bin/env node
 
-# Builds a sea-map site from config, sea-map and sea-dataserver assets
-# supplied in separate directories (by separate packages, allowing
-# your choice of site variants to be composed).
-#
-# Creates a `version.json` file, then links these components into
-# `$dest/in` and then runs the RequireJS optimiser on it, putting the
-# optimised result in `$dest/out`
-#
-# Assumes an NPM environment - specifically, that `generate-version`
-# is in the path, and `$package_name` is defined, containing the name
-# of the NPM package.
+/**
+ * Emulates the older RequireJS script sea-site-build, but invokes webpack
+ * and builds using commonJS modules.
+ *
+ */
+const fs = require('fs');
+const minimist = require('minimist');
+const path = require('path');
+const CopyPlugin = require('copy-webpack-plugin');
+const webpack = require('webpack');
+const spawn = require('child_process').spawnSync;
+const cwd = process.cwd();
 
-while getopts "c:m:d:" OPTION
-do
-     case $OPTION in
-         c)
-	     config="$OPTARG"
-             ;;
-         m)
-	     sea_map="$OPTARG"
-             ;;
-         d)
-	     dest="$OPTARG"
-             ;;
-         ?)
-             printf "invalid option '$OPTION', stopping\n" >&2
-             exit 1
-             ;;
-     esac
-done
+function die(msg) {
+  console.error(msg);
+  process.exit(-1);
+}
 
-declare -A params=(
-    [config]=-c
-    [sea_map]=-m
-    [dest]=-d
-)
+const args = minimist(process.argv.slice(2), {
+  string: ['c', 'd', 'm'],
+});
 
-# check mandatory params are set
-for param in ${!params[@]}; do
-    printf "param $param\t${params[$param]}='${!param}'\n"
-    [[ -n "${!param}" ]] && continue
+const configPath = path.resolve(
+  cwd, args.c || die("you must supply a path to the config files -c")
+);
+const seaMapPath = path.resolve(
+  cwd, args.m || die("you must supply a path to the sea-map module in -m")
+);
+const destPath = path.resolve(
+  cwd, args.d || die("you must supply a path to the build destination in -d"), 'out'
+);
+const copyPaths = args
+  ._
+  .filter( p => !p.match('~$'))
+  .map(p => path.resolve(cwd, p))
 
-    printf "Please supply the '${params[$param]} <$param path>' directory option" >&2
-    exit -1
-done
+const exec = (str, cwd) => {
+  const [ cmd, ...args ] = str.split(/ +/)
+  const options = cwd? { cwd } : undefined;
+  return spawn(cmd, args, options);
+}
+const shell = (str, cwd) => {
+  const result = exec(str, cwd);
+  if (result.status == 0)
+    return String(result.stdout).replace(/\n$/, '');
+  
+  console.error(`command failed: ${str}`);
+  process.exit(1)
+}
+const timestamp = shell(`/bin/date +%Y-%m-%dT%H:%M:%S%z`);
 
-# remove the options from the argument list
-shift $((OPTIND-1))
+function getGitCommit(cwd) {
+  var commit = shell(`git rev-parse --short HEAD`, cwd);
 
-printf "supplemental assets:\n"
-printf "  %s\n" "$@"
+  if (exec(`git diff-index --quiet HEAD`, cwd).status)
+	  commit += "-modified";
+  return commit;
+}
 
-script=$(readlink -f "$0")
-scriptpath=$(dirname "$script")
+// This resolves to sea-map's package.json.
+const seaMapPackageJson = require(path.join(seaMapPath, 'package.json'));
+const variant = process.env.npm_package_name;
 
-rm -rf "$dest"/* &&
-mkdir -p "$dest/in/www" &&
-ln -sfrn "$sea_map/www"/* "$dest/in/www" &&
-generate-version "$npm_package_name" >"$config/version.json" &&
-ln -sfrn "$config" "$dest/in/www/configuration" &&
-cp -f "$sea_map/build.js" "$dest/in/build.js" &&
-{ if [ -n "$*" ]; then ln -vsfrn "$@" "$dest/in/www/"; fi } &&
-r.js -o "$dest/in/build.js" "dir=$dest/out"
+const debug = variant == 'sea-map' || process.env.NODE_ENV !== "production";
+
+const versionJson = path.join(configPath, 'version.json');
+let versionInfo;
+if (variant == 'sea-map') {
+  // Infer development mode from sea-map package
+
+  // Get the linked dependency config in ext/package.json 
+  const mapPackageJson = require(path.join(cwd, 'ext/package.json'));
+  versionInfo = {
+	  variant: mapPackageJson.name,
+	  timestamp: timestamp,
+	  gitcommit: getGitCommit(path.join(cwd, '/ext')),
+	  seaMapVersion: seaMapPackageJson.version+'_'+getGitCommit()+'-dev',
+	  seaMapResolvedVersion: seaMapPackageJson._resolved, // may be undefined
+  };
+}
+else {
+  // Infer production mode
+
+  // Get the sea-map git commit ID from the resolved version (we don't have
+  // access to the git repo in this case).
+  const seaMapResolved = (seaMapPackageJson._resolved || '');
+  const seaMapCommit = seaMapResolved.replace(/^.*#/, '_').substr(0, 8);
+  versionInfo = {
+	  variant: variant,
+	  timestamp: timestamp,
+	  gitcommit: getGitCommit(),
+	  seaMapVersion: seaMapPackageJson.version+seaMapCommit,
+	  seaMapResolvedVersion: seaMapPackageJson._resolved, // may be undefined
+  };
+}
+fs.writeFileSync(versionJson,
+                 JSON.stringify(versionInfo, null, 2));
+
+
+
+const webpackConfig = {
+  context: cwd,
+  entry: "sea-map/www/map-app/app.js", // in the sea-map module
+  devtool: debug ? "inline-source-map" : false,
+  mode: debug? 'development' : 'production',
+  output: {
+    path: destPath,
+    filename: "map-app/map-app.js"
+  },
+  module: {
+    rules: [
+      {
+        test: /\.html$/i,
+        loader: 'html-loader',
+      },
+      {
+        test: /\.css$/,
+        use: [
+          'style-loader',
+          {
+            loader: 'css-loader',
+            options: {
+              import: true,
+            },
+          },
+        ],
+      },
+      {
+        test: /\.png$/,
+        use: [
+          {
+            loader: 'file-loader',
+            options: {
+              outputPath: 'images/',
+            },
+          },
+        ],
+      },
+      {
+        test: /\.(woff(2)?|ttf|eot|svg)(\?v=\d+\.\d+\.\d+)?$/,
+        type: 'asset/resource',
+        generator: {
+          filename: 'fonts/[name]-[hash].[ext][query]',
+        },
+      },
+      {
+        test: /\.php/,
+        type: 'asset/resource',
+        generator: {
+          filename: 'service/[name][ext][query]',
+        },
+      },
+    ],
+  },
+  plugins: [
+    new CopyPlugin({
+      patterns: [
+        { from: configPath, to: "configuration",
+          globOptions: { ignore: ["**/*~"] },
+        },
+        ...copyPaths.map(p => ({ from: p, to: "./" }))
+      ],
+    }),
+  ],
+};
+
+webpack(
+  webpackConfig,
+  (err, stats) => {
+    if (err || stats.hasErrors()) {
+      die(`webpack error: ${stats}`);
+    }
+});
+
