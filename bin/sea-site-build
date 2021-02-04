@@ -169,8 +169,11 @@ const webpackConfig = {
 webpack(
   webpackConfig,
   (err, stats) => {
-    if (err || stats.hasErrors()) {
-      die(`webpack error: ${stats}`);
+	  if (err || stats.hasErrors()) {
+	    die(`webpack error: ${stats}`);
     }
-});
+    else
+      console.log(`webpack: ${stats}`);
+  }
+);
 
