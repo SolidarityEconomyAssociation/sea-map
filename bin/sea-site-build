@@ -163,7 +163,8 @@ const webpackConfig = {
         ...copyPaths.map(p => {
 	        if (!fs.statSync().isFile())
             p += '/**';
-	        return { from: p, to: "./" }
+	        return { from: p, to: "./",
+                   globOptions: { ignore: ["**/*~"] } }
 	      })
       ],
     }),
