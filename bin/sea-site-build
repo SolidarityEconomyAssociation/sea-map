@@ -9,6 +9,7 @@ const fs = require('fs');
 const minimist = require('minimist');
 const path = require('path');
 const CopyPlugin = require('copy-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const webpack = require('webpack');
 const spawn = require('child_process').spawnSync;
 const cwd = process.cwd();
@@ -67,9 +68,12 @@ const debug = variant == 'sea-map' || process.env.NODE_ENV !== "production";
 
 const versionJson = path.join(configPath, 'version.json');
 let versionInfo;
+let entry;
 if (variant == 'sea-map') {
   // Infer development mode from sea-map package
 
+  entry = "./www/map-app/app.js"; // locally
+  
   // Get the linked dependency config in ext/package.json 
   const mapPackageJson = require(path.join(cwd, 'ext/package.json'));
   versionInfo = {
@@ -83,6 +87,8 @@ if (variant == 'sea-map') {
 else {
   // Infer production mode
 
+  entry = "sea-map/www/map-app/app.js"; // in the sea-map module dep
+  
   // Get the sea-map git commit ID from the resolved version (we don't have
   // access to the git repo in this case).
   const seaMapResolved = (seaMapPackageJson._resolved || '');
@@ -102,13 +108,13 @@ fs.writeFileSync(versionJson,
 
 const webpackConfig = {
   context: cwd,
-  entry: "sea-map/www/map-app/app.js", // in the sea-map module
+  entry: 
   devtool: debug ? "source-map" : false,
   mode: debug? 'development' : 'production',
   target: 'web',
   output: {
     path: destPath,
-    filename: "map-app/map-app.js"
+    filename: "map-app/map-app.js",
   },
   module: {
     rules: [
@@ -119,7 +125,13 @@ const webpackConfig = {
       {
         test: /\.css$/,
         use: [
-          'style-loader',
+          { // extracts the css into a single output file for
+            // index.html to include statically.
+            loader: MiniCssExtractPlugin.loader,
+            options: {
+              publicPath: '../', // undo the effect of loading images/fonts inside map-app
+            },
+          },
           {
             loader: 'css-loader',
             options: {
@@ -134,7 +146,8 @@ const webpackConfig = {
           {
             loader: 'file-loader',
             options: {
-              outputPath: 'images/',
+              outputPath: 'map-app/images/',
+              publicPath: 'images',
             },
           },
         ],
@@ -143,28 +156,33 @@ const webpackConfig = {
         test: /\.(woff(2)?|ttf|eot|svg)(\?v=\d+\.\d+\.\d+)?$/,
         type: 'asset/resource',
         generator: {
-          filename: 'fonts/[name]-[hash].[ext][query]',
+          filename: 'map-app/fonts/[name]-[hash].[ext][query]',
         },
       },
       {
         test: /\.php/,
         type: 'asset/resource',
         generator: {
-          filename: 'service/[name][ext][query]',
+            filename: 'service/[name][ext][query]',
         },
       },
     ],
   },
   plugins: [
-    new CopyPlugin({
-      patterns: [
-        { from: configPath, to: "configuration",
-          globOptions: { ignore: ["**/*~"] },
-        },
-        ...copyPaths.map(p => {
-	        if (!fs.statSync(p).isFile())
-            p += '/**';
-	        return { from: p, to: "./",
+    new MiniCssExtractPlugin({
+      filename: 'map-app/map-app.css',
+    }),
+	  new CopyPlugin({
+	    patterns: [
+		    { from: configPath, to: "configuration",
+		      globOptions: { ignore: ["**/*~"] },
+		    },
+		    ...copyPaths.map(p => {
+	        let { dir, base } = path.parse(p);
+          if (!fs.statSync(p).isFile())
+            base += '/**';
+          console.log("copy", dir, base);
+	        return { from: base, to: ".", context: dir,
                    globOptions: { ignore: ["**/*~"] } }
 	      })
       ],
