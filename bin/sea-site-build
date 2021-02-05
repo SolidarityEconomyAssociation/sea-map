@@ -50,7 +50,7 @@ const shell = (str, cwd) => {
   console.error(`command failed: ${str}`);
   process.exit(1)
 }
-const timestamp = shell(`/bin/date +%Y-%m-%dT%H:%M:%S%z`);
+const timestamp = new Date().toISOString();
 
 function getGitCommit(cwd) {
   var commit = shell(`git rev-parse --short HEAD`, cwd);
