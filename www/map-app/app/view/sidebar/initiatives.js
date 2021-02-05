@@ -14,7 +14,7 @@ const eventbus = require('../../eventbus')
 
 function init(registry) {
   const config = registry('config');
-  const sidebarView = registry('view/base');
+  const sidebarView = registry('view/sidebar/base');
   const presenter = registry('presenter/sidebar/initiatives');
 
   // Our local Sidebar object:
