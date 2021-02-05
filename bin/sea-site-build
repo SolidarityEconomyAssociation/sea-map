@@ -181,7 +181,7 @@ const webpackConfig = {
 	        let { dir, base } = path.parse(p);
           if (!fs.statSync(p).isFile())
             base += '/**';
-          console.log("copy", dir, base);
+          console.log(`copying: ${dir}//${base}`);
 	        return { from: base, to: ".", context: dir,
                    globOptions: { ignore: ["**/*~"] } }
 	      })
