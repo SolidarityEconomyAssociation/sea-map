@@ -108,7 +108,7 @@ fs.writeFileSync(versionJson,
 
 const webpackConfig = {
   context: cwd,
-  entry: 
+  entry: entry,
   devtool: debug ? "source-map" : false,
   mode: debug? 'development' : 'production',
   target: 'web',
