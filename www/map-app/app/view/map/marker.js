@@ -10,6 +10,7 @@ define([
   "use strict";
 
   // Keep a mapping between initiatives and their Markers:
+  // Note: contents currently contain only the active dataset
   let markerForInitiative = {};
   // CAUTION: this may be either a ClusterGroup, or the map itself
   let hiddenClusterGroup = null;
@@ -353,11 +354,11 @@ define([
   };
 
   function setSelected(initiative) {
-    markerForInitiative[initiative.uniqueId].setSelected(initiative);
+    markerForInitiative[initiative.uniqueId]?.setSelected(initiative);
   }
   function setUnselected(initiative) {
     if (markerForInitiative[initiative.uniqueId])
-      markerForInitiative[initiative.uniqueId].setUnselected(initiative);
+      markerForInitiative[initiative.uniqueId]?.setUnselected(initiative);
   }
 
 
@@ -377,7 +378,7 @@ define([
     let that = this;
     let initiatives = Object.keys(markerForInitiative);
     initiatives.forEach(initiative => {
-      markerForInitiative[initiative].destroy();
+      markerForInitiative[initiative]?.destroy();
     });
     markerForInitiative = {};
   }
@@ -388,7 +389,8 @@ define([
   function showMarkers(initiatives) {
     //show markers only if it is not currently vissible
     initiatives.forEach(initiative => {
-      if (!markerForInitiative[initiative.uniqueId].isVisible())
+      const marker = markerForInitiative[initiative.uniqueId];
+      if (marker && !marker.isVisible())
         markerForInitiative[initiative.uniqueId].show();
     });
 
@@ -396,7 +398,7 @@ define([
 
   function hideMarkers(initiatives) {
     initiatives.forEach(initiative => {
-      markerForInitiative[initiative.uniqueId].destroy();
+      markerForInitiative[initiative.uniqueId]?.destroy();
     });
   }
 
@@ -408,7 +410,10 @@ define([
   }
 
   function refreshMarker(initiative) {
-    markerForInitiative[initiative.uniqueId].marker
+    if (!markerForInitiative[initiative.uniqueId])
+      return;
+    markerForInitiative[initiative.uniqueId]
+      .marker
       .setPopupContent(markerForInitiative[initiative.uniqueId].presenter.getInitiativeContent(initiative));
   }
 
@@ -420,15 +425,15 @@ define([
     unselectedClusterGroup = clusterGroup;
   }
   function showTooltip(initiative) {
-    markerForInitiative[initiative.uniqueId].showTooltip(initiative);
+    markerForInitiative[initiative.uniqueId]?.showTooltip(initiative);
   }
   function hideTooltip(initiative) {
-    markerForInitiative[initiative.uniqueId].hideTooltip(initiative);
+    markerForInitiative[initiative.uniqueId]?.hideTooltip(initiative);
   }
 
   function getInitiativeContent(initiative) {
     // console.log(this.getInitiativeContent(initiative));
-    return markerForInitiative[initiative.uniqueId].getInitiativeContent(
+    return markerForInitiative[initiative.uniqueId]?.getInitiativeContent(
       initiative
     );
   }
